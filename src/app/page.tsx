@@ -26,15 +26,25 @@ export default function Home() {
       spotify: ""
     }
   })
+  const [userTracks, setUserTracks] = React.useState([])
 
   useEffect(() => {
     checkHasAuthCode()
   }, [])
+  const [playlistData, setPlaylistData] = React.useState({
+    total: 0,
+    items: [
+      {
+        name: ""
+      }
+    ]
+  })
 
   useEffect(() => {
     if (clientAccessToken) {
       getCurrentUserProfile()
       getCurrentUserPlaylists()
+      getCurrentUserTracks()
     }
   }, [clientAccessToken])
 
@@ -133,7 +143,7 @@ export default function Home() {
       })
       const data = await res.json()
       if (data) {
-        console.log(data)
+        setPlaylistData(data)
       } else {
         console.error("could not retrieve user profile playlists")
       }
@@ -141,6 +151,39 @@ export default function Home() {
       console.error(err)
     }
   }
+
+  // get current user's saved tracks
+  const getCurrentUserTracks = async () => {
+    const userTracksBaseURL = "https://api.spotify.com/v1/me/tracks?limit=50"
+    let allTracks = [] as any
+    try {
+      let nextURL = userTracksBaseURL
+      while (nextURL) {
+        const res = await fetch(nextURL, {
+          method: "GET",
+          headers: {
+            Authorization: "Bearer " + clientAccessToken
+          }
+        })
+        const data = await res.json()
+        if (data) {
+          allTracks = allTracks.concat(data.items)
+          nextURL = data.next
+        } else {
+          console.error("could not retrieve user saved tracks")
+        }
+      }
+      setUserTracks(allTracks)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  function updateAudioFeatures(trackName: string) {
+    getAudioFeatures(trackName)
+  }
+
+  const getAudioFeatures = async (trackName: string) => {}
 
   return (
     <div>
@@ -184,6 +227,58 @@ export default function Home() {
         ) : (
           <></>
         )}
+      </div>
+      {/* Playlist Data */}
+      <div>
+        {isAuthorized ? (
+          <>
+            <p>Playlists: ({playlistData.total})</p>
+            <div>
+              {playlistData.items.map((playlist, index) => (
+                <p>
+                  <button>
+                    {index}. {playlist.name}
+                  </button>
+                </p>
+              ))}
+            </div>
+          </>
+        ) : (
+          <></>
+        )}
+      </div>
+      <div className="grid grid-cols-2">
+        {/* Tracks Data */}
+        <div>
+          {isAuthorized ? (
+            <>
+              <p>Tracks: ({userTracks.length})</p>
+              <div>
+                {userTracks.map((track: any, index) => (
+                  <p>
+                    <button
+                      onClick={() => updateAudioFeatures(track.track.name)}
+                    >
+                      {index}. {track.track.name}
+                    </button>
+                  </p>
+                ))}
+              </div>
+            </>
+          ) : (
+            <></>
+          )}
+        </div>
+        {/* Audio Features */}
+        <div>
+          {isAuthorized ? (
+            <>
+              <p>audio features</p>
+            </>
+          ) : (
+            <></>
+          )}
+        </div>
       </div>
     </div>
   )
